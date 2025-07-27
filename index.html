@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Serajia Milk Shop</title>
+  <style>
+    body { font-family: sans-serif; margin: 0; background: #f8f8f8; }
+    header { background: #2c3e50; color: white; padding: 20px; text-align: center; }
+    section { padding: 20px; }
+    .product, .review, .admin-review {
+      background: white; padding: 15px; margin: 10px 0; border-radius: 10px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+    label { display: block; margin-top: 10px; }
+    input, select, textarea {
+      width: 100%; padding: 8px; margin-top: 5px;
+      border: 1px solid #ccc; border-radius: 5px;
+    }
+    button, .whatsapp-btn {
+      background: #27ae60; color: white; border: none;
+      padding: 10px 15px; margin-top: 15px;
+      border-radius: 5px; cursor: pointer;
+      text-decoration: none; display: inline-block;
+    }
+    #replaceBtn { background: #e67e22; display: none; }
+    #adminPanel { display: none; margin-top: 20px; }
+    .reply-box {
+      margin-top: 10px;
+      width: 100%;
+      padding: 8px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      resize: vertical;
+    }
+    #changePasswordSection {
+      display: none;
+      margin-top: 20px;
+      background: #eee;
+      padding: 15px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Serajia Milk Shop</h1>
+    <p>Fresh Dairy Products in Your Area</p>
+  </header>
+
+  <section>
+    <h2>🛒 Our Products</h2>
+
+    <div class="product"><h3>Milk (1L)</h3><p>Rs. 200</p></div>
+    <div class="product"><h3>Yogurt (1 Kg)</h3><p>Rs. 250</p></div>
+    <div class="product"><h3>Ghee (1 Kg)</h3><p>Rs. 3200</p></div>
+
+    <h2>📩 Place Your Order</h2>
+    <form id="orderForm">
+      <label for="name">Your Name</label>
+      <input type="text" id="name" required />
+
+      <label for="phone">Phone Number</label>
+      <input type="tel" id="phone" required />
+
+      <label for="product">Product</label>
+      <select id="product" required>
+        <option value="">-- Select --</option>
+        <option value="Milk">Milk</option>
+        <option value="Yogurt">Yogurt</option>
+        <option value="Ghee">Ghee</option>
+      </select>
+
+      <label for="quantity">Quantity (e.g., 2 Liters or 3 Kg)</label>
+      <input type="text" id="quantity" required />
+
+      <label for="address">Delivery Address</label>
+      <textarea id="address" rows="3" required></textarea>
+
+      <button type="button" onclick="sendWhatsApp()">Send Order via WhatsApp</button>
+    </form>
+
+    <button id="replaceBtn" onclick="replaceOrder()">Replace Order</button>
+
+    <br /><br />
+    <a class="whatsapp-btn" href="https://wa.me/923270553470" target="_blank"
+      >Chat on WhatsApp</a
+    >
+  </section>
+
+  <section>
+    <h2>🗣️ Customer Reviews</h2>
+    <div id="reviewsContainer"></div>
+    <form onsubmit="addReview(event)">
+      <label for="reviewText">Write a Review</label>
+      <textarea id="reviewText" rows="3" required></textarea>
+      <button type="submit">Submit Review</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>🔐 Admin Access</h2>
+    <button onclick="showAdmin()">Open Admin Page</button>
+    <div id="adminPanel">
+      <h3>Reply to Reviews</h3>
+      <div id="adminReviews"></div>
+      <button onclick="saveReplies()">Save Replies</button>
+
+      <hr/>
+
+      <button onclick="toggleChangePassword()">Change Password</button>
+
+      <div id="changePasswordSection">
+        <label for="currentPass">Current Password</label>
+        <input type="password" id="currentPass" />
+
+        <label for="newPass">New Password</label>
+        <input type="password" id="newPass" />
+
+        <label for="confirmPass">Confirm New Password</label>
+        <input type="password" id="confirmPass" />
+
+        <button onclick="changePassword()">Save New Password</button>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    // Keys for localStorage
+    const REVIEWS_KEY = "milkShopReviews";
+    const REPLIES_KEY = "milkShopReplies";
+    const PASSWORD_KEY = "adminPassword";
+
+    // Load reviews and replies from localStorage or initialize empty
+    let reviews = JSON.parse(localStorage.getItem(REVIEWS_KEY)) || [];
+    let replies = JSON.parse(localStorage.getItem(REPLIES_KEY)) || [];
+
+    // Get admin password or default
+    function getPassword() {
+      return localStorage.getItem(PASSWORD_KEY) || "tyty0987654321";
+    }
+    function setPassword(newPass) {
+      localStorage.setItem(PASSWORD_KEY, newPass);
+    }
+
+    // Save reviews and replies to localStorage
+    function saveToStorage() {
+      localStorage.setItem(REVIEWS_KEY, JSON.stringify(reviews));
+      localStorage.setItem(REPLIES_KEY, JSON.stringify(replies));
+    }
+
+    // Initial rendering of reviews on page load
+    renderReviews();
+    renderAdminReviews();
+
+    // Send order via WhatsApp
+    function sendWhatsApp() {
+      const name = document.getElementById("name").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+      const product = document.getElementById("product").value;
+      const quantity = document.getElementById("quantity").value.trim();
+      const address = document.getElementById("address").value.trim();
+
+      if (!name || !phone || !product || !quantity || !address) {
+        alert("Please fill in all fields.");
+        return;
+      }
+
+      const message = `New Order:%0AName: ${name}%0APhone: ${phone}%0AProduct: ${product}%0AQuantity: ${quantity}%0AAddress: ${address}`;
+      const url = `https://wa.me/923270553470?text=${message}`;
+      window.open(url, "_blank");
+
+      document.getElementById("orderForm").style.display = "none";
+      document.getElementById("replaceBtn").style.display = "inline-block";
+    }
+
+    function replaceOrder() {
+      document.getElementById("orderForm").reset();
+      document.getElementById("orderForm").style.display = "block";
+      document.getElementById("replaceBtn").style.display = "none";
+    }
+
+    // Add new customer review
+    function addReview(event) {
+      event.preventDefault();
+      const reviewText = document.getElementById("reviewText").value.trim();
+      if (!reviewText) {
+        alert("Please write your review.");
+        return;
+      }
+      reviews.push(reviewText);
+      replies.push(""); // empty reply
+      saveToStorage();
+      renderReviews();
+      renderAdminReviews();
+      document.getElementById("reviewText").value = "";
+    }
+
+    // Render customer reviews for users
+    function renderReviews() {
+      const container = document.getElementById("reviewsContainer");
+      container.innerHTML = "";
+      reviews.forEach((rev, i) => {
+        const div = document.createElement("div");
+        div.className = "review";
+        div.innerHTML = `<p>${rev}</p>
+          <p><strong>Admin Reply:</strong> ${replies[i] || "No reply yet"}</p>`;
+        container.appendChild(div);
+      });
+    }
+
+    // Render admin replies section
+    function renderAdminReviews() {
+      const adminDiv = document.getElementById("adminReviews");
+      if (!adminDiv) return;
+      adminDiv.innerHTML = "";
+      reviews.forEach((rev, i) => {
+        const div = document.createElement("div");
+        div.className = "admin-review";
+        div.innerHTML = `
+          <p><strong>Review:</strong> ${rev}</p>
+          <label>Reply:</label>
+          <textarea class="reply-box" data-index="${i}">${replies[i]}</textarea>
+          <hr/>
+        `;
+        adminDiv.appendChild(div);
+      });
+    }
+
+    // Show admin panel after password prompt
+    function showAdmin() {
+      const password = prompt("Enter Admin Password:");
+      if (password === getPassword()) {
+        document.getElementById("adminPanel").style.display = "block";
+      } else {
+        alert("Wrong password!");
+      }
+    }
+
+    // Save admin replies
+    function saveReplies() {
+      const replyBoxes = document.querySelectorAll(".reply-box");
+      replyBoxes.forEach((box) => {
+        const idx = box.getAttribute("data-index");
+        replies[idx] = box.value.trim();
+      });
+      saveToStorage();
+      alert("Replies saved!");
+      renderReviews();
+    }
+
+    // Toggle change password section visibility
+    function toggleChangePassword() {
+      const sec = document.getElementById("changePasswordSection");
+      sec.style.display = sec.style.display === "block" ? "none" : "block";
+    }
+
+    // Change admin password
+    function changePassword() {
+      const currentPass = document.getElementById("currentPass").value;
+      const newPass = document.getElementById("newPass").value;
+      const confirmPass = document.getElementById("confirmPass").value;
+
+      if (!currentPass || !newPass || !confirmPass) {
+        alert("Please fill in all password fields.");
+        return;
+      }
+      if (currentPass !== getPassword()) {
+        alert("Current password is incorrect.");
+        return;
+      }
+      if (newPass !== confirmPass) {
+        alert("New passwords do not match.");
+        return;
+      }
+      setPassword(newPass);
+      alert("Password changed successfully!");
+      document.getElementById("currentPass").value = "";
+      document.getElementById("newPass").value = "";
+      document.getElementById("confirmPass").value = "";
+      toggleChangePassword();
+    }
+  </script>
+</body>
+</html>
